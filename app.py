@@ -26,7 +26,10 @@ st.set_page_config(page_title="Spam Detector (Chapter03)", page_icon="📧", lay
 
 # ---------- Data Loading Utilities ----------
 LOCAL_DATASET_PATH = (
-    "Hands-On-Artificial-Intelligence-for-Cybersecurity/Chapter03/datasets/sms_spam_no_header.csv"
+    "datasets/sms_spam_no_header.csv"
+)
+DEFAULT_DATASET_URL = (
+    "https://raw.githubusercontent.com/PacktPublishing/Hands-On-Artificial-Intelligence-for-Cybersecurity/master/Chapter03/datasets/sms_spam_no_header.csv"
 )
 
 
@@ -145,59 +148,24 @@ def predict_one(pipe: Pipeline, text: str, threshold: float = 0.5) -> Tuple[str,
 
 # ---------- UI ----------
 st.title("📧 垃圾郵件（Spam）偵測服務")
+st.caption("資料自動載入順序：本機 → URL → 內建小樣本")
 
-# Data source selection
-st.subheader("選擇資料來源")
-source = st.radio(
-    "資料來源：",
-    options=[
-        "使用預設本機路徑",
-        "上傳 CSV 檔",
-        "從 URL 載入",
-        "使用內建小樣本",
-    ],
-    index=2,
-    horizontal=False,
-)
-
+# Auto-load dataset: local -> URL -> builtin sample
 df = None
 source_desc = ""
-if source == "使用預設本機路徑":
-    st.caption("預設本機路徑：" + LOCAL_DATASET_PATH)
+try:
+    df = load_dataset_from_local(LOCAL_DATASET_PATH)
+    source_desc = f"本機檔案：{LOCAL_DATASET_PATH}"
+except Exception:
     try:
-        df = load_dataset_from_local(LOCAL_DATASET_PATH)
-        source_desc = f"本機檔案：{LOCAL_DATASET_PATH}"
-    except FileNotFoundError:
-        st.warning("找不到本機資料檔案。您可以改用上傳、URL 或內建小樣本。")
-    except Exception as e:
-        st.error(f"載入本機資料失敗：{e}")
-elif source == "上傳 CSV 檔":
-    up = st.file_uploader("上傳 CSV/TSV 純文字檔（兩欄：label,text）", type=["csv", "tsv", "txt"])
-    if up is not None:
-        try:
-            data = up.read()
-            df = load_dataset_from_bytes(data)
-            source_desc = f"使用者上傳：{getattr(up, 'name', 'uploaded_file')}"
-        except Exception as e:
-            st.error(f"解析上傳檔案失敗：{e}")
-elif source == "從 URL 載入":
-    default_url = (
-        "https://raw.githubusercontent.com/PacktPublishing/Hands-On-Artificial-Intelligence-for-Cybersecurity/master/Chapter03/datasets/sms_spam_no_header.csv"
-    )
-    url = st.text_input("輸入資料集 URL：", value=default_url)
-    if st.button("從 URL 載入"):
-        try:
-            df = load_dataset_from_url(url)
-            source_desc = f"遠端 URL：{url}"
-        except Exception as e:
-            st.error(f"從 URL 載入失敗：{e}")
-else:  # 使用內建小樣本
-    if st.button("載入內建小樣本"):
+        df = load_dataset_from_url(DEFAULT_DATASET_URL)
+        source_desc = f"遠端 URL：{DEFAULT_DATASET_URL}"
+    except Exception:
         try:
             df = builtin_sample_dataset()
             source_desc = "內建小樣本（示範用途）"
         except Exception as e:
-            st.error(f"建立內建樣本失敗：{e}")
+            st.error(f"無法載入任何資料來源：{e}")
 
 if df is not None:
     if source_desc:

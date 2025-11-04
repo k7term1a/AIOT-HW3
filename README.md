@@ -4,12 +4,11 @@ This Streamlit app builds a simple spam/ham text classifier using a local datase
 
 PacktPublishing/Hands-On-Artificial-Intelligence-for-Cybersecurity
 
-By default you can choose a dataset source at runtime:
+The app automatically loads a dataset with this priority:
 
-- Use local file at `Hands-On-Artificial-Intelligence-for-Cybersecurity/Chapter03/datasets/sms_spam_no_header.csv`
-- Upload a CSV/TSV file (two columns: label, text)
-- Load from URL (default points to the Packt GitHub raw file)
-- Use a tiny built-in sample dataset (for quick demo)
+- Local file: `datasets/sms_spam_no_header.csv`
+- URL: Packt GitHub raw file
+- Built-in tiny sample (demo only)
 
 ## Quickstart
 
@@ -41,11 +40,11 @@ pip install -r requirements.txt
 streamlit run app.py
 ```
 
-4) In the app, select your preferred data source. If the local file does not exist, use upload/URL/built-in options. The UI shows dataset summary, evaluation metrics (accuracy, classification report, confusion matrix), ROC/PR curves, and a text area to classify a single message.
+4) The app auto-loads the dataset (local → URL → built-in). The UI shows dataset summary, evaluation metrics (accuracy, classification report, confusion matrix), ROC/PR curves, and a text area to classify a single message.
 
 ## Notes
 
 - The model is a simple `TfidfVectorizer` + `MultinomialNB` pipeline.
 - Training happens in-memory on app start and results are cached.
-- You can upload or use a URL if the local file is unavailable.
+- No manual selection needed; it falls back automatically.
 - The built-in sample is small and intended only for demonstration, not for benchmarking.
