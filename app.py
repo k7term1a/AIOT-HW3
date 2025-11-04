@@ -61,6 +61,39 @@ def load_dataset_from_local(path: str) -> pd.DataFrame:
     return _normalize_dataset(df)
 
 
+@st.cache_data(show_spinner=False)
+def load_dataset_from_bytes(data: bytes) -> pd.DataFrame:
+    # Try CSV without header first, then auto-detect delimiter
+    buf = io.BytesIO(data)
+    try:
+        df = pd.read_csv(buf, header=None)
+        return _normalize_dataset(df)
+    except Exception:
+        buf.seek(0)
+        df = pd.read_csv(buf, sep=None, engine="python")
+        return _normalize_dataset(df)
+
+
+@st.cache_data(show_spinner=False)
+def load_dataset_from_url(url: str, timeout: float = 15.0) -> pd.DataFrame:
+    resp = requests.get(url, timeout=timeout)
+    resp.raise_for_status()
+    return load_dataset_from_bytes(resp.content)
+
+
+def builtin_sample_dataset() -> pd.DataFrame:
+    data = [
+        ("ham", "Ok lar... Joking wif u oni..."),
+        ("ham", "I'll call you later"),
+        ("spam", "Free entry in 2 a wkly comp to win FA Cup final tkts! Text FA to 87121."),
+        ("spam", "WINNER!! You have won a £1000 cash prize. Call 09061701461 now."),
+        ("ham", "Are we meeting today?"),
+        ("spam", "URGENT! Your Mobile No 1234 won 2,000,000. Claim now."),
+    ]
+    df = pd.DataFrame(data, columns=["label", "text"])
+    return _normalize_dataset(df)
+
+
 # ---------- Model Utilities ----------
 def build_pipeline() -> Pipeline:
     return Pipeline(
@@ -112,18 +145,63 @@ def predict_one(pipe: Pipeline, text: str, threshold: float = 0.5) -> Tuple[str,
 
 # ---------- UI ----------
 st.title("📧 垃圾郵件（Spam）偵測服務")
-st.caption("使用本機 Chapter03 資料集：" + LOCAL_DATASET_PATH)
 
-# Load and train
+# Data source selection
+st.subheader("選擇資料來源")
+source = st.radio(
+    "資料來源：",
+    options=[
+        "使用預設本機路徑",
+        "上傳 CSV 檔",
+        "從 URL 載入",
+        "使用內建小樣本",
+    ],
+    index=2,
+    horizontal=False,
+)
+
 df = None
-try:
-    df = load_dataset_from_local(LOCAL_DATASET_PATH)
-except FileNotFoundError:
-    st.error("找不到本機資料檔案，請確認路徑是否存在：" + LOCAL_DATASET_PATH)
-except Exception as e:
-    st.error(f"載入資料失敗：{e}")
+source_desc = ""
+if source == "使用預設本機路徑":
+    st.caption("預設本機路徑：" + LOCAL_DATASET_PATH)
+    try:
+        df = load_dataset_from_local(LOCAL_DATASET_PATH)
+        source_desc = f"本機檔案：{LOCAL_DATASET_PATH}"
+    except FileNotFoundError:
+        st.warning("找不到本機資料檔案。您可以改用上傳、URL 或內建小樣本。")
+    except Exception as e:
+        st.error(f"載入本機資料失敗：{e}")
+elif source == "上傳 CSV 檔":
+    up = st.file_uploader("上傳 CSV/TSV 純文字檔（兩欄：label,text）", type=["csv", "tsv", "txt"])
+    if up is not None:
+        try:
+            data = up.read()
+            df = load_dataset_from_bytes(data)
+            source_desc = f"使用者上傳：{getattr(up, 'name', 'uploaded_file')}"
+        except Exception as e:
+            st.error(f"解析上傳檔案失敗：{e}")
+elif source == "從 URL 載入":
+    default_url = (
+        "https://raw.githubusercontent.com/PacktPublishing/Hands-On-Artificial-Intelligence-for-Cybersecurity/master/Chapter03/datasets/sms_spam_no_header.csv"
+    )
+    url = st.text_input("輸入資料集 URL：", value=default_url)
+    if st.button("從 URL 載入"):
+        try:
+            df = load_dataset_from_url(url)
+            source_desc = f"遠端 URL：{url}"
+        except Exception as e:
+            st.error(f"從 URL 載入失敗：{e}")
+else:  # 使用內建小樣本
+    if st.button("載入內建小樣本"):
+        try:
+            df = builtin_sample_dataset()
+            source_desc = "內建小樣本（示範用途）"
+        except Exception as e:
+            st.error(f"建立內建樣本失敗：{e}")
 
 if df is not None:
+    if source_desc:
+        st.caption("資料來源：" + source_desc)
     # Data preview
     st.subheader("資料概覽")
     col1, col2 = st.columns([2, 1])
