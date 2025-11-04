@@ -1,5 +1,7 @@
 # Spam Detector (Streamlit)
 
+Live app: https://k7-aiot-hw3.streamlit.app/
+
 This Streamlit app builds a simple spam/ham text classifier using a local dataset from Chapter03 of the repository:
 
 PacktPublishing/Hands-On-Artificial-Intelligence-for-Cybersecurity
